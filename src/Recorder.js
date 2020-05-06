@@ -67,6 +67,11 @@ class Recorder extends EventEmitter {
         this._reset();
         //this.emit('error', data);
         break;
+      case 'amplitude':
+        if (this.onAmplitude) {
+          this.onAmplitude(event, data)
+        }
+        break;
     }
 
     this.emit(event, data);

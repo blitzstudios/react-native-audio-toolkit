@@ -28,6 +28,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
+import java.util.Timer;
+import java.util.TimerTask;
 
 public class AudioRecorderModule extends ReactContextBaseJavaModule implements
         MediaRecorder.OnInfoListener, MediaRecorder.OnErrorListener {
@@ -35,6 +37,7 @@ public class AudioRecorderModule extends ReactContextBaseJavaModule implements
 
     Map<Integer, MediaRecorder> recorderPool = new HashMap<>();
     Map<Integer, Boolean> recorderAutoDestroy = new HashMap<>();
+    Map<Integer, Timer> timerPool = new HashMap<>();
 
     private ReactApplicationContext context;
 
@@ -159,6 +162,8 @@ public class AudioRecorderModule extends ReactContextBaseJavaModule implements
         if (callback != null) {
             callback.invoke();
         }
+
+        stopTimer(recorderId);
     }
 
     private void destroy(Integer recorderId) {
@@ -253,6 +258,8 @@ public class AudioRecorderModule extends ReactContextBaseJavaModule implements
         try {
             recorder.start();
 
+            startTimer(recorderId);
+
             callback.invoke();
         } catch (Exception e) {
             callback.invoke(errObj("startfail", e.toString()));
@@ -269,6 +276,7 @@ public class AudioRecorderModule extends ReactContextBaseJavaModule implements
 
         try {
             recorder.stop();
+            stopTimer(recorderId);
             if (this.recorderAutoDestroy.get(recorderId)) {
                 Log.d(LOG_TAG, "Autodestroying recorder...");
                 destroy(recorderId);
@@ -304,6 +312,7 @@ public class AudioRecorderModule extends ReactContextBaseJavaModule implements
                 destroy(recorderId);
             }
             callback.invoke();
+            stopTimer(recorderId);
         } catch (Exception e) {
             callback.invoke(errObj("stopfail", e.toString()));
         }
@@ -336,6 +345,8 @@ public class AudioRecorderModule extends ReactContextBaseJavaModule implements
         emitEvent(recorderId, "error", data);
 
         destroy(recorderId);
+
+        stopTimer(recorderId);
     }
 
     @Override
@@ -353,5 +364,44 @@ public class AudioRecorderModule extends ReactContextBaseJavaModule implements
 
         emitEvent(recorderId, "info", data);
 
+    }
+
+    private void startTimer(Integer recorderId) {
+        Timer timer = this.timerPool.get(recorderId);
+        if(timer == null){
+            timer = new Timer();
+            this.timerPool.put(recorderId, timer);
+        }
+
+        final MediaRecorder recorder = this.recorderPool.get(recorderId);
+        timer.scheduleAtFixedRate(new TimerTask() {
+          @Override
+          public void run() {
+    
+              WritableMap body = Arguments.createMap();
+            //   body.putDouble("id", frameId++);
+              
+              int amplitude = recorder.getMaxAmplitude();
+              if (amplitude == 0) {
+                body.putInt("value", -160);
+                body.putInt("rawValue", 0);
+              } else {
+                body.putInt("rawValue", amplitude);
+                body.putInt("value", (int) (20 * Math.log(((double) amplitude) / 32767d)));
+              }
+    
+              Integer recorderId = getRecorderId(recorder);
+              emitEvent(recorderId, "amplitude", body);
+          }
+        }, 0, 250);
+    }
+
+    private void stopTimer(Integer recorderId) {
+        Timer timer = this.timerPool.get(recorderId);
+        if (timer != null) {
+          timer.cancel();
+          timer.purge();
+          timer = null;
+        }
     }
 }
