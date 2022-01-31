@@ -377,10 +377,10 @@ public class AudioRecorderModule extends ReactContextBaseJavaModule implements
         timer.scheduleAtFixedRate(new TimerTask() {
           @Override
           public void run() {
-    
+            try {
               WritableMap body = Arguments.createMap();
             //   body.putDouble("id", frameId++);
-              
+
               int amplitude = recorder.getMaxAmplitude();
               if (amplitude == 0) {
                 body.putInt("value", -160);
@@ -389,9 +389,12 @@ public class AudioRecorderModule extends ReactContextBaseJavaModule implements
                 body.putInt("rawValue", amplitude);
                 body.putInt("value", (int) (20 * Math.log(((double) amplitude) / 32767d)));
               }
-    
+
               Integer recorderId = getRecorderId(recorder);
               emitEvent(recorderId, "amplitude", body);
+            } catch (Exception e) {
+              Log.e(LOG_TAG, e.toString());
+            }
           }
         }, 0, 250);
     }
