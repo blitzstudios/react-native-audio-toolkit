@@ -48,7 +48,7 @@ public class AudioRecorderModule extends ReactContextBaseJavaModule implements
 
     @Override
     public String getName() {
-        return "RCTAudioRecorder";
+        return "AudioRecorder";
     }
 
     private void emitEvent(Integer recorderId, String event, WritableMap data) {

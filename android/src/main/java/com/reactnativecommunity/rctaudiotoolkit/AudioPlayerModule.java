@@ -99,7 +99,7 @@ public class AudioPlayerModule extends ReactContextBaseJavaModule implements Med
 
     @Override
     public String getName() {
-        return "RCTAudioPlayer";
+        return "AudioPlayer";
     }
 
     private void emitEvent(Integer playerId, String event, WritableMap data) {
